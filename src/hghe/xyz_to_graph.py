@@ -3,6 +3,7 @@ Put xyz data into a graph format with no extra information ito it.
 """
 
 import torch
+import numpy as np
 from torch_geometric.data import Data
 from .ase_utils import find_neighbors_within_radius
 
@@ -36,16 +37,21 @@ class ElementGraph:
         """
         neighbors = find_neighbors_within_radius(self.elements, self.coordinates, self.lattice_vectors, self.radius)
         edge_index = []
+        edge_attr = []
 
         for i, nbrs in neighbors.items():
             for j in nbrs:
                 edge_index.append([i, j])
+                # Calculate the distance between the nodes
+                distance = np.linalg.norm(np.array(self.coordinates[i]) - np.array(self.coordinates[j]))
+                edge_attr.append([distance])
 
         edge_index = torch.tensor(edge_index, dtype=torch.long).t().contiguous()
+        edge_attr = torch.tensor(edge_attr, dtype=torch.float)
         x = torch.tensor(self.coordinates, dtype=torch.float)
         lattice = torch.tensor(self.lattice_vectors, dtype=torch.float)
 
-        return Data(x=x, edge_index=edge_index, lattice=lattice)
+        return Data(x=x, edge_index=edge_index, edge_attr=edge_attr, u=lattice)
 
     def __repr__(self):
         return f"ElementGraph(nodes={self.data.num_nodes}, edges={self.data.num_edges})"
@@ -60,8 +66,9 @@ class ElementGraph:
 
         print("\nEdges:")
         edge_index = self.data.edge_index.t().tolist()
-        for edge in edge_index:
-            print(f"Edge between Node {edge[0]} and Node {edge[1]}")
+        edge_attr = self.data.edge_attr.tolist()
+        for edge, attr in zip(edge_index, edge_attr):
+            print(f"Edge between Node {edge[0]} and Node {edge[1]} with distance {attr[0]}")
 
     def save(self, filepath):
         """
