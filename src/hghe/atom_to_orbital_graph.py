@@ -81,7 +81,7 @@ class OrbitalGraph:
 
         # pack everything to a graph:
         edge_index = torch.tensor(edge_index, dtype=torch.long).contiguous()
-        edge_attr = torch.tensor(edge_attr, dtype=torch.float)
+        edge_attr = torch.stack(edge_attr)
         x = torch.stack(x)
         u = global_info
         return Data(x=x, edge_index=edge_index, edge_attr=edge_attr, u=u)
