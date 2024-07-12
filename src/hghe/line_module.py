@@ -6,9 +6,6 @@ then applies the original PyTorch layer, and then converts it back to a normal g
 """
 
 import torch
-from torch_geometric.utils import to_undirected
-
-from torch_geometric.utils import coalesce
 
 
 def average_reciprocal_edges(edge_index, edge_attr):
