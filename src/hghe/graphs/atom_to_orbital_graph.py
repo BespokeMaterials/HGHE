@@ -19,7 +19,6 @@ class OrbitalGraph:
         self.orbitals = None
         self.data = self._build_orbital_graph()
 
-
     def _build_orbital_graph(self):
         """
         Build PyTorch Geometric data object with orbitals.
@@ -54,13 +53,11 @@ class OrbitalGraph:
         for atom, nbrs in neighbors.items():
             # go through etch orbital of the atom
             orbitals = atoms_and_orbitals[atom]
-            print("orbitals:", orbitals)
             for orbital in orbitals:
                 # orbital node:
-                extended_orbital_node=node_info[atom]
-                encoded_obit=self.orbital_encode[ orbitals[orbital]]
-                print("orbitall----",encoded_obit)
-                extended_orbital_node=torch.cat((extended_orbital_node, torch.tensor(encoded_obit)), dim=0)
+                extended_orbital_node = node_info[atom]
+                encoded_obit = self.orbital_encode[orbitals[orbital]]
+                extended_orbital_node = torch.cat((extended_orbital_node, torch.tensor(encoded_obit)), dim=0)
                 x.append(extended_orbital_node)
                 # orbital end edge:
                 e1 = orbital
