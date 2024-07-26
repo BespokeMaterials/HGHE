@@ -17,7 +17,10 @@ def main(file_path, radius):
 
     # Extend to orbitals
     orbital_map = {"B": ["s", "p"], "N": ["s", "q"]}
-    orbital_graph = OrbitalGraph(atomic_graph, orbital_map)
+    orbital_encode = {"s": [0, 0, 0, 0, 0, 1],
+                      "p": [0, 0, 0, 0, 1, 0],
+                      "q": [0, 0, 0, 0, 1, 1]}
+    orbital_graph = OrbitalGraph(atomic_graph, orbital_map, orbital_encode)
     orbital_graph.display_graph()
 
     print("atomic_graph:", atomic_graph)

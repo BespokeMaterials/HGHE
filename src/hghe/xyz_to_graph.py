@@ -27,6 +27,7 @@ class ElementGraph:
         self.lattice_vectors = lattice_vectors
         self.radius = radius
         self.data = self._build_pyg_data()
+        self.node_descriptor=["x", "y", "z"]
 
     def _build_pyg_data(self):
         """
