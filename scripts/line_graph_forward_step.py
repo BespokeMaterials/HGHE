@@ -45,7 +45,10 @@ def main(file_path, radius):
 
     # Extend to orbitals
     orbital_map = {"B": ["s", "p"], "N": ["s", "q"]}
-    orbital_graph = OrbitalGraph(atomic_graph, orbital_map)
+    orbital_encode = {"s": [ 1],
+                      "p": [2],
+                      "q": [3]}
+    orbital_graph = OrbitalGraph(atomic_graph, orbital_map,orbital_encode)
     orbital_graph.display_graph()
 
     print("atomic_graph:", atomic_graph)
@@ -57,7 +60,7 @@ def main(file_path, radius):
     # build  model:
     model = DemoModel(in_channels_line=1,
                       out_channels_line=4,
-                      edge_dim_line=3)
+                      edge_dim_line=4)
 
     # pass through the model:
     x, edge_attr, u, edge_index = model(orbital_graph.data.x,

@@ -21,25 +21,32 @@ def main(file_path, radius):
 
     # Enhance the atomic graph
     # Node enhancement with chemical data
-    chem_enh=ChemEnhanceElementGraph()
-    chem_enh_atomic_graph=chem_enh.enhance_descriptor(atomic_graph)
+    chem_enh = ChemEnhanceElementGraph()
+    chem_enh_atomic_graph = chem_enh.enhance_descriptor(atomic_graph)
 
     print("chem_enh_atomic_graph:", chem_enh_atomic_graph)
     print("chem_enh_atomic_graph.data:", chem_enh_atomic_graph.data)
-    print("chem_enh_atomic_graph.node_descriptor",chem_enh_atomic_graph.node_descriptor)
+    print("chem_enh_atomic_graph.node_descriptor", chem_enh_atomic_graph.node_descriptor)
 
     # Node edge enhancement:
     edge_enh = EdgeEnhanceElementGraph()
-    enh_graph=edge_enh.enhance_descriptor(chem_enh_atomic_graph)
+    enh_graph = edge_enh.enhance_descriptor(chem_enh_atomic_graph)
 
     print("enh_atomic_graph:", enh_graph)
     print("enh_atomic_graph.data:", enh_graph.data)
     print("enh_atomic_graph.node_descriptor", enh_graph.node_descriptor)
     print("enh_atomic_graph.edge_descriptor", enh_graph.edge_descriptor)
 
+    # Let´s make it equivariant and remouve the x,y, z info from nodes
+    enh_graph.edge_descriptor = enh_graph.edge_descriptor[3:]
+    enh_graph.data.x = enh_graph.data.x
+
     # Extend to orbitals
     orbital_map = {"B": ["s", "p"], "N": ["s", "q"]}
-    orbital_graph = OrbitalGraph(atomic_graph, orbital_map)
+    orbital_encode = {"s": [0, 0, 0, 0, 0, 1],
+                      "p": [0, 0, 0, 0, 1, 0],
+                      "q": [0, 0, 0, 0, 1, 1]}
+    orbital_graph = OrbitalGraph(atomic_graph, orbital_map, orbital_encode)
     orbital_graph.display_graph()
 
     print("atomic_graph:", atomic_graph)

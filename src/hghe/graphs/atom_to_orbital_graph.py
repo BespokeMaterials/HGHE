@@ -4,7 +4,7 @@ from hghe.utils import extract_neighbors
 
 
 class OrbitalGraph:
-    def __init__(self, atomic_graph, orbital_map):
+    def __init__(self, atomic_graph, orbital_map, orbital_encode):
         """
         Initialize the OrbitalGraph.
 
@@ -15,8 +15,10 @@ class OrbitalGraph:
         """
         self.atomic_graph = atomic_graph
         self.orbital_map = orbital_map
+        self.orbital_encode = orbital_encode
         self.orbitals = None
         self.data = self._build_orbital_graph()
+
 
     def _build_orbital_graph(self):
         """
@@ -52,11 +54,13 @@ class OrbitalGraph:
         for atom, nbrs in neighbors.items():
             # go through etch orbital of the atom
             orbitals = atoms_and_orbitals[atom]
+            print("orbitals:", orbitals)
             for orbital in orbitals:
                 # orbital node:
                 extended_orbital_node=node_info[atom]
-
-                extended_orbital_node=torch.cat((extended_orbital_node, torch.tensor([orbital])), dim=0)
+                encoded_obit=self.orbital_encode[ orbitals[orbital]]
+                print("orbitall----",encoded_obit)
+                extended_orbital_node=torch.cat((extended_orbital_node, torch.tensor(encoded_obit)), dim=0)
                 x.append(extended_orbital_node)
                 # orbital end edge:
                 e1 = orbital
@@ -77,6 +81,7 @@ class OrbitalGraph:
                 for n_orbital in orbitals:
                     if n_orbital != orbital:
                         e2 = n_orbital
+
                         # add edge:
                         edge_index[0].append(e1)
                         edge_index[1].append(e2)
@@ -92,16 +97,18 @@ class OrbitalGraph:
     def __repr__(self):
         return f"OrbitalGraph(nodes={self.data.num_nodes}, edges={self.data.num_edges})"
 
-    def display_graph(self):
+    def display_graph(self, no_edges=True, no_nodes=True):
         """
         Display the graph nodes and edges.
         """
-        print("Nodes:")
-        for i, element in enumerate(self.data.x):
-            print(f"Node {i}: {element}")
+        if no_nodes is False:
+            print("Nodes:")
+            for i, element in enumerate(self.data.x):
+                print(f"Node {i}: {element}")
 
-        print("\nEdges:")
-        edge_index = self.data.edge_index.t().tolist()
-        edge_attr = self.data.edge_attr.tolist()
-        for edge, attr in zip(edge_index, edge_attr):
-            print(f"Edge between Node {edge[0]} and Node {edge[1]} with attributes {attr}")
+        if no_edges is False:
+            print("\nEdges:")
+            edge_index = self.data.edge_index.t().tolist()
+            edge_attr = self.data.edge_attr.tolist()
+            for edge, attr in zip(edge_index, edge_attr):
+                print(f"Edge between Node {edge[0]} and Node {edge[1]} with attributes {attr}")
