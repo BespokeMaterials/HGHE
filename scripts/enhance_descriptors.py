@@ -39,7 +39,9 @@ def main(file_path, radius):
 
     # Let´s make it equivariant and remouve the x,y, z info from nodes
     enh_graph.edge_descriptor = enh_graph.edge_descriptor[3:]
-    enh_graph.data.x = enh_graph.data.x
+    enh_graph.data.x = enh_graph.data.x[:, 3:]
+    print("enh_atomic_graph.data:", enh_graph.data)
+    print("enh_atomic_graph.node_descriptor", enh_graph.node_descriptor)
 
     # Extend to orbitals
     orbital_map = {"B": ["s", "p"], "N": ["s", "q"]}

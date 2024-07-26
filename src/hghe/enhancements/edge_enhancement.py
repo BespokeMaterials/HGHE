@@ -203,7 +203,7 @@ class EdgeEnhanceElementGraph:
                 dsc.append(f"spherical_harmonics_{i}")
 
         edge_descriptors = torch.tensor(edge_descriptors)
-        print("edge_descriptors.shape:", edge_descriptors.shape)
+
         # Insert the descriptor to the node graph
         element_graph.data.edge_attr = edge_descriptors
         element_graph.edge_descriptor = dsc
