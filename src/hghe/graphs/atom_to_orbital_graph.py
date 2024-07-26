@@ -1,6 +1,6 @@
 import torch
 from torch_geometric.data import Data
-from .utils import extract_neighbors
+from hghe.utils import extract_neighbors
 
 
 class OrbitalGraph:
@@ -54,7 +54,10 @@ class OrbitalGraph:
             orbitals = atoms_and_orbitals[atom]
             for orbital in orbitals:
                 # orbital node:
-                x.append(node_info[atom])
+                extended_orbital_node=node_info[atom]
+
+                extended_orbital_node=torch.cat((extended_orbital_node, torch.tensor([orbital])), dim=0)
+                x.append(extended_orbital_node)
                 # orbital end edge:
                 e1 = orbital
 
