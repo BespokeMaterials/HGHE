@@ -170,7 +170,7 @@ class EdgeEnhanceElementGraph:
 
         edge_descriptors = [None] * len(element_graph.data.edge_index.T)
 
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=8) as executor:
             futures = []
             for index, edge in enumerate(tqdm(element_graph.data.edge_index.T)):
                 futures.append(executor.submit(compute_descriptor, index, edge, element_graph, self.descript))
@@ -193,13 +193,13 @@ class EdgeEnhanceElementGraph:
 
         dsc = []
         if "distance" in self.descript:
-            for i, k in enumerate(distance):
+            for i, k in enumerate(li_desc["distance"]):
                 dsc.append(f"distance_{i}")
         if "bessel_distance" in self.descript:
-            for i, k in enumerate(b_distance):
+            for i, k in enumerate(li_desc["b_distance"]):
                 dsc.append(f"bessel_distance_{i}")
         if "spherical_harmonics" in self.descript:
-            for i, k in enumerate(shea_h):
+            for i, k in enumerate(li_desc["shea_h"]):
                 dsc.append(f"spherical_harmonics_{i}")
 
         edge_descriptors = torch.tensor(edge_descriptors)
@@ -233,4 +233,4 @@ def get_descriptor(node_1,node_2, element_graph, descript ):
 
 
 
-    return descriptor , [distance, b_distance, shea_h]
+    return descriptor , {"distance":distance, "b_distance":b_distance, "shea_h":shea_h}
