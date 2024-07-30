@@ -168,29 +168,28 @@ class EdgeEnhanceElementGraph:
 
     def enhance_descriptor(self, element_graph):
 
-        #edge_descriptors = [None] * len(element_graph.data.edge_index.T)
+        edge_descriptors = [None] * len(element_graph.data.edge_index.T)
 
-        #with concurrent.futures.ProcessPoolExecutor(max_workers=10) as executor:
-        #    futures = []
-        #    for index, edge in enumerate(tqdm(element_graph.data.edge_index.T)):
-        #        futures.append(executor.submit(compute_descriptor, index, edge, element_graph, self.descript))
-        #
-        #   for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
-        #        index, descriptor, li_desc = future.result()
-        #        edge_descriptors[index] = descriptor
+        with concurrent.futures.ProcessPoolExecutor(max_workers=8) as executor:
+            futures = []
+            for index, edge in enumerate(tqdm(element_graph.data.edge_index.T)):
+                futures.append(executor.submit(compute_descriptor, index, edge, element_graph, self.descript))
+
+            for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
+                index, descriptor, li_desc = future.result()
+                edge_descriptors[index] = descriptor
 
         # TODO:This is a place for speed up:
-        print("TODO:This is a place for speed up:")
-        edge_descriptors=[]
-        for edge_nr, edge in enumerate(tqdm(element_graph.data.edge_index.T)):
-            descriptor, li_desc = get_descriptor(node_1=edge[0],
-                                                 node_2=edge[1],
-                                                 element_graph=element_graph,
-                                                 descript=self.descript, )
-
-
-            descriptor = descriptor
-            edge_descriptors.append(descriptor)
+        # for edge_nr, edge in enumerate(tqdm(element_graph.data.edge_index.T)):
+        #
+        #     descriptor,li_desc =get_descriptor(node_1=edge[0],
+        #                                node_2=edge[1],
+        #                                element_graph=element_graph,
+        #                                descript=self.descript, )
+        #
+        #     distance,b_distance,shea_h=li_desc
+        #     descriptor=descriptor
+        #     edge_descriptors.append(descriptor)
 
         dsc = []
         if "distance" in self.descript:

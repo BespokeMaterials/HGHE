@@ -41,8 +41,6 @@ class ElementGraph:
         edge_attr = []
 
         for i, nbrs in neighbors.items():
-            #TODO: This may be changed
-            nbrs=np.unique(nbrs)
             for j in nbrs:
                 edge_index.append([i, j])
                 # Calculate the distance between the nodes

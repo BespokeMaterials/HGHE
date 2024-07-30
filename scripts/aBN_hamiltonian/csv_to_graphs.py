@@ -3,8 +3,9 @@ from hghe.enhancements import ChemEnhanceElementGraph, EdgeEnhanceElementGraph
 from utils import number_to_6bit_list
 import pandas as pd
 import ast
+import torch
 
-def main(file_path,nr_atoms, radius):
+def main(file_path,nr_atoms, radius,save_path):
 
 
     # Read the CSV file into a pandas DataFrame
@@ -13,11 +14,15 @@ def main(file_path,nr_atoms, radius):
     print(df.head())
 
     graphs=[]
+    hmat_=[]
+    smat_=[]
+    filenames=[]
 
     print(df['nr_atoms'])
     for index, row in df.iterrows():
         if row['nr_atoms']>= nr_atoms and row['nr_atoms']<=nr_atoms+10 :
             print(row['nr_atoms'])
+            filenames.append( row['filename'])
             # Build the atom graph
             atoms =ast.literal_eval(row["atoms_tipe"])
             coordinates= ast.literal_eval(row["atoms_xyz"])
@@ -78,11 +83,27 @@ def main(file_path,nr_atoms, radius):
             print("orbitals:", orbital_graph.orbitals)
 
             graphs.append(orbital_graph)
+            hmat_.append(hmat)
+            smat_.append(smat)
+            if len(smat_)==2:
+                break
+
+        # Combine the graphs and target properties into a single dictionary
+        data_to_save = {
+            'graphs': graphs,
+            'hmat': hmat_,
+            'smat': smat_,
+            "filename":filenames,
+        }
+
+        # Save the data
+        torch.save(data_to_save, save_path)
 
 
 
 
 if __name__ == "__main__":
     example_file_path = "DATA/DFT/aBN_DFT_CSV/DFT.csv"
-    nr_atoms = 60
-    main(example_file_path, nr_atoms, radius=7)
+    nr_atoms = 64
+    save_path="DATA/DFT/aBN_DFT_CSV/DFT_graphs_64atoms.pt"
+    main(example_file_path, nr_atoms, radius=8,save_path=save_path)

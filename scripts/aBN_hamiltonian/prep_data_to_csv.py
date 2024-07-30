@@ -134,7 +134,7 @@ def parse_dft(dft_path, json_path):
 
     dft_reg = list_subdirectories(dft_path)
     csv_rows=[]
-    for k,sample in tqdm(enumerate(dft_reg)):
+    for k,sample in enumerate(tqdm(dft_reg)):
         path = f"{dft_path}/{sample}/aiida.fdf"
         json_dc = construct_json_from_fdf(path)
 
@@ -181,7 +181,7 @@ def main(dft_path, json_path):
 
 
 if __name__ == "__main__":
-    path_to_dft_files = "/Users/voicutomut/Documents/GitHub/HGHE/Data/DFT/BN_DFT"
+    path_to_dft_files = "/home/ICN2/atomut/HGHE/Data/DFT/BN_DFT"
     path_json = "DATA/DFT/aBN_DFT_CSV"
     main(path_to_dft_files, path_json)
 
