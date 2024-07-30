@@ -6,7 +6,7 @@ import numpy as np
 from scipy.special import sph_harm
 import math
 import torch
-
+from tqdm import tqdm
 
 def f_cut(r, decay_rate=3, cutoff=50):
     """
@@ -170,7 +170,7 @@ class EdgeEnhanceElementGraph:
         edge_descriptors = []
 
         # TODO:This is a place for speed up:
-        for edge_nr, edge in enumerate(element_graph.data.edge_index.T):
+        for edge_nr, edge in enumerate(tqdm(element_graph.data.edge_index.T)):
 
             descriptor = []
             node_1 = edge[0]
