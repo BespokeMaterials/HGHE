@@ -7,6 +7,7 @@ from scipy.special import sph_harm
 import math
 import torch
 from tqdm import tqdm
+import concurrent.futures
 
 def f_cut(r, decay_rate=3, cutoff=50):
     """
@@ -167,29 +168,28 @@ class EdgeEnhanceElementGraph:
 
     def enhance_descriptor(self, element_graph):
 
-        edge_descriptors = []
+        edge_descriptors = [None] * len(element_graph.data.edge_index.T)
+
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            futures = []
+            for index, edge in enumerate(tqdm(element_graph.data.edge_index.T)):
+                futures.append(executor.submit(compute_descriptor, index, edge, element_graph, self.descript))
+
+            for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
+                index, descriptor, li_desc = future.result()
+                edge_descriptors[index] = descriptor
 
         # TODO:This is a place for speed up:
-        for edge_nr, edge in enumerate(tqdm(element_graph.data.edge_index.T)):
-
-            descriptor = []
-            node_1 = edge[0]
-            node_2 = edge[1]
-
-            coord_a = element_graph.data.x[node_1][:3]
-            coord_b = element_graph.data.x[node_2][:3]
-
-            if "distance" in self.descript:
-                distance = compute_distance(coord_a, coord_b)
-                descriptor.extend(distance)
-            if "bessel_distance" in self.descript:
-                b_distance = bessel_distance(coord_a, coord_b, n=[i for i in range(1, 9)])
-                descriptor.extend(b_distance)
-            if "spherical_harmonics" in self.descript:
-                shea_h = spherical_harmonics(coord_a, coord_b, max_l=7)
-                descriptor.extend(shea_h)
-
-            edge_descriptors.append(descriptor)
+        # for edge_nr, edge in enumerate(tqdm(element_graph.data.edge_index.T)):
+        #
+        #     descriptor,li_desc =get_descriptor(node_1=edge[0],
+        #                                node_2=edge[1],
+        #                                element_graph=element_graph,
+        #                                descript=self.descript, )
+        #
+        #     distance,b_distance,shea_h=li_desc
+        #     descriptor=descriptor
+        #     edge_descriptors.append(descriptor)
 
         dsc = []
         if "distance" in self.descript:
@@ -209,3 +209,28 @@ class EdgeEnhanceElementGraph:
         element_graph.edge_descriptor = dsc
 
         return element_graph
+
+
+def compute_descriptor(index, edge, element_graph, descript):
+    descriptor, li_desc = get_descriptor(node_1=edge[0], node_2=edge[1], element_graph=element_graph, descript=descript)
+    return index, descriptor, li_desc
+def get_descriptor(node_1,node_2, element_graph, descript ):
+
+    descriptor = []
+
+    coord_a = element_graph.data.x[node_1][:3]
+    coord_b = element_graph.data.x[node_2][:3]
+
+    if "distance" in descript:
+        distance = compute_distance(coord_a, coord_b)
+        descriptor.extend(distance)
+    if "bessel_distance" in descript:
+        b_distance = bessel_distance(coord_a, coord_b, n=[i for i in range(1, 9)])
+        descriptor.extend(b_distance)
+    if "spherical_harmonics" in descript:
+        shea_h = spherical_harmonics(coord_a, coord_b, max_l=7)
+        descriptor.extend(shea_h)
+
+
+
+    return descriptor , [distance, b_distance, shea_h]
