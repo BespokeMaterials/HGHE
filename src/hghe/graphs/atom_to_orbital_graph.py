@@ -1,6 +1,6 @@
 import torch
 from torch_geometric.data import Data
-from hghe.utils import extract_neighbors
+from hghe.utils import extract_undirected_neighbors
 
 
 class OrbitalGraph:
@@ -29,7 +29,7 @@ class OrbitalGraph:
         node_info = self.atomic_graph.data.x
         edge_info = self.atomic_graph.data.edge_attr
         global_info = self.atomic_graph.data.u
-        neighbors = extract_neighbors(self.atomic_graph.data)
+        neighbors = extract_undirected_neighbors(self.atomic_graph.data)
 
         atoms_and_orbitals = {}
 
@@ -51,6 +51,7 @@ class OrbitalGraph:
 
         # go thru each atom
         for atom, nbrs in neighbors.items():
+
             # go through etch orbital of the atom
             orbitals = atoms_and_orbitals[atom]
             for orbital in orbitals:
@@ -63,6 +64,8 @@ class OrbitalGraph:
                 e1 = orbital
 
                 # go to all the neighbours and build edges
+
+
                 for nb in nbrs:
                     # go through the orbitals of the neighbour:
                     n_orbitals = atoms_and_orbitals[nb[0]]
@@ -83,6 +86,7 @@ class OrbitalGraph:
                         edge_index[0].append(e1)
                         edge_index[1].append(e2)
                         edge_attr.append(torch.zeros_like(edge_info[0]))
+
 
         # pack everything to a graph:
         edge_index = torch.tensor(edge_index, dtype=torch.long).contiguous()

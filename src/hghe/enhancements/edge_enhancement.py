@@ -80,7 +80,7 @@ def spherical_harmonics(c1, c2, max_l=1):
         list: A list of real spherical harmonics values for each (l, m) up to the specified order.
     """
     # Move to center
-    rc = c1 - c2
+    rc = np.array(c1) - np.array(c2)
 
     # Convert cartesian coordinates to spherical coordinates
     r, theta, phi = cartesian_to_spherical(rc[0], rc[1], rc[2])
@@ -144,6 +144,8 @@ def real_spherical_harmonics(l, m, theta, phi):
 
 def compute_distance(coord_a, coord_b):
     # Subtract coordinates of the second point from the first point
+
+
     diff = np.array(coord_a) - np.array(coord_b)
 
     # Compute the square of each difference
@@ -219,8 +221,8 @@ def get_descriptor(node_1,node_2, element_graph, descript ):
 
     descriptor = []
 
-    coord_a = element_graph.data.x[node_1][:3]
-    coord_b = element_graph.data.x[node_2][:3]
+    coord_a = element_graph.data.x[node_1][:3].tolist()
+    coord_b = element_graph.data.x[node_2][:3].tolist()
 
     if "distance" in descript:
         distance = compute_distance(coord_a, coord_b)

@@ -44,10 +44,11 @@ class ElementGraph:
             #TODO: This may be changed
             nbrs=np.unique(nbrs)
             for j in nbrs:
-                edge_index.append([i, j])
-                # Calculate the distance between the nodes
-                distance = np.linalg.norm(np.array(self.coordinates[i]) - np.array(self.coordinates[j]))
-                edge_attr.append([distance])
+                if j!=i:
+                    edge_index.append([i, j])
+                    # Calculate the distance between the nodes
+                    distance = np.linalg.norm(np.array(self.coordinates[i]) - np.array(self.coordinates[j]))
+                    edge_attr.append([distance])
 
         edge_index = torch.tensor(edge_index, dtype=torch.long).t().contiguous()
         edge_attr = torch.tensor(edge_attr, dtype=torch.float)

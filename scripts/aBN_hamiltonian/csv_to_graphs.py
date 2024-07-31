@@ -18,14 +18,14 @@ def main(file_path,nr_atoms, radius,save_path):
     smat_=[]
     filenames=[]
 
-    print(df['nr_atoms'])
     for index, row in df.iterrows():
         if row['nr_atoms']>= nr_atoms and row['nr_atoms']<=nr_atoms+10 :
             print(row['nr_atoms'])
             filenames.append( row['filename'])
             # Build the atom graph
             atoms =ast.literal_eval(row["atoms_tipe"])
-            coordinates= ast.literal_eval(row["atoms_xyz"])
+            coordinates=  ast.literal_eval(row["atoms_xyz"])
+
             lattice_vectors =ast.literal_eval(row["lattice_vectors"])
 
             hmat=ast.literal_eval(row["hmat"])
@@ -85,8 +85,8 @@ def main(file_path,nr_atoms, radius,save_path):
             graphs.append(orbital_graph)
             hmat_.append(hmat)
             smat_.append(smat)
-            if len(smat_)==2:
-                break
+            # if len(smat_)==2:
+            #     break
 
         # Combine the graphs and target properties into a single dictionary
         data_to_save = {
