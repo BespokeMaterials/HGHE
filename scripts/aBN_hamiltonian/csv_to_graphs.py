@@ -96,8 +96,9 @@ def main(file_path,nr_atoms, radius,save_path):
             "filename":filenames,
         }
 
-        # Save the data
-        torch.save(data_to_save, save_path)
+    # Save the data
+    torch.save(data_to_save, save_path)
+    print(f"Total of {len(graphs)} graphs for training")
 
 
 
