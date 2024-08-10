@@ -23,13 +23,13 @@ class LocalBlock(torch.nn.Module):
         # MLP layers for GINEConv
         self.mlp1 = torch.nn.Sequential(
             torch.nn.Linear(n_shape_in, int((n_shape_in + n_shape_out) / 2)),
-            torch.nn.LeakyReLU(),
+            torch.nn.Sigmoid(),
             torch.nn.Linear(int((n_shape_in + n_shape_out) / 2), n_shape_out)
         )
 
         self.mlp2 = torch.nn.Sequential(
             torch.nn.Linear(n_shape_out, int(n_shape_out / 2)),
-            torch.nn.LeakyReLU(),
+            torch.nn.Sigmoid(),
             torch.nn.Linear(int(n_shape_out / 2), n_shape_out)
         )
 
@@ -72,7 +72,7 @@ class InteractionBlock(torch.nn.Module):
                 # MLP layers for GINEConv
                 self.mlp1 = torch.nn.Sequential(
                     torch.nn.Linear(self.n_shape_in, int((self.n_shape_in + self.n_shape_out) / 2)),
-                    torch.nn.LeakyReLU(),
+                    torch.nn.Sigmoid(),
                     torch.nn.Linear(int((self.n_shape_in + self.n_shape_out) / 2), self.n_shape_out)
                 )
 
@@ -134,13 +134,13 @@ class OnsiteBlock(torch.nn.Module):
         # MLP layers for GINEConv
         self.mlp1 = torch.nn.Sequential(
             torch.nn.Linear(n_shape_in, int((n_shape_in + n_shape_out) / 2)),
-            torch.nn.LeakyReLU(),
+            torch.nn.Sigmoid(),
             torch.nn.Linear(int((n_shape_in + n_shape_out) / 2), n_shape_out)
         )
 
         self.mlp2 = torch.nn.Sequential(
             torch.nn.Linear(n_shape_out, int(n_shape_out / 2)),
-            torch.nn.LeakyReLU(),
+            torch.nn.Sigmoid(),
             torch.nn.Linear(int(n_shape_out / 2), n_shape_out)
         )
 
@@ -247,17 +247,13 @@ class HModel(torch.nn.Module):
                                        onsite_out[0], onsite_out[1], onsite_out[2])
         self.hopping_block = HoppingBlock(hopping_in[0], hopping_in[1], hopping_in[2],
                                           hopping_out[0], hopping_out[1], hopping_out[2])
-        self.bn1 = torch.nn.BatchNorm1d(orbital_out[0])
-        self.bn2 = torch.nn.BatchNorm1d(interaction_out[0])
-        self.bn3 = torch.nn.BatchNorm1d(interaction_out[1])
+
 
     def forward(self, x, u, edge_index, edge_attr=None, batch=None, bond_batch=None):
         x = self.orbital_encoding_block(x, edge_index, edge_attr, u, batch, bond_batch)
-        x = self.bn1(x)
-        x2, e, edge_index = self.interaction_block(x, edge_index, edge_attr, u, batch, bond_batch)
-        x2 = self.bn2(x2)
 
-        e = self.bn3(e)
+        x2, e, edge_index = self.interaction_block(x, edge_index, edge_attr, u, batch, bond_batch)
+
         x = x + x2
 
         xo = self.onsite_blok(x, edge_index, e, u, batch, bond_batch)
