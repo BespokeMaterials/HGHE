@@ -41,7 +41,7 @@ class LocalBlock(torch.nn.Module):
 
     def forward(self, x, edge_index, edge_attr=None, u=None, batch=None, bond_batch=None):
 
-        print(edge_index)
+
         # Apply the first GINEConv layer
         x = self.conv1(x, edge_index, edge_attr,  )
 
@@ -81,10 +81,10 @@ class InteractionBlock(torch.nn.Module):
                 # Convolutional layers
                 self.conv1 = GINEConv(self.mlp1, train_eps=True, edge_dim=self.e_shape_in)
                 self.conv2 = TransformerConv(self.n_shape_out, self.n_shape_out, heads=4, edge_dim=self.e_shape_in)
-                self.conv3 = TransformerConv(self.n_shape_out, self.n_shape_out, heads=4, edge_dim=self.e_shape_in)
+                self.conv3 = TransformerConv(self.n_shape_out*4, self.n_shape_out, heads=4, edge_dim=self.e_shape_in)
                 self.conv4 = GATv2Conv(self.n_shape_out * 4, self.n_shape_out, edge_dim=self.e_shape_in)
 
-            def forward(self, x, edge_index, edge_attr=None):
+            def forward(self, x, edge_index, edge_attr=None, u=None, batch=None, bond_batch=None):
                 # Apply the first GINEConv layer
                 x = self.conv1(x, edge_index, edge_attr)
 
@@ -97,20 +97,28 @@ class InteractionBlock(torch.nn.Module):
                 # Apply the GATv2Conv layer
                 x = self.conv4(x, edge_index, edge_attr)
 
-                return x, edge_attr
+                print("x-shape:", x.shape)
+                return x, edge_attr, u
 
         # Instantiate the Seq class
-        self.seq1 = Seq(n_shape_in, e_shape_in, n_shape_out)
-        self.seq2 = Seq(n_shape_in, e_shape_in, n_shape_out)
-        self.seq3 = Seq(n_shape_in, e_shape_in, n_shape_out)
+        self.seq1 = LineWrapper(Seq(n_shape_in=e_shape_in,
+                                    e_shape_in=n_shape_in,
+                                    n_shape_out=n_shape_out))
+        self.seq2 = LineWrapper(LineWrapper(Seq(n_shape_in=n_shape_in,
+                                                e_shape_in=e_shape_in,
+                                                n_shape_out=n_shape_out)))
+        self.seq3 = LineWrapper(LineWrapper(LineWrapper(Seq(n_shape_in=e_shape_in,
+                                                            e_shape_in=n_shape_in,
+                                                            n_shape_out=n_shape_out))))
 
         # Define weights as trainable parameters
         self.weights = torch.nn.Parameter(torch.tensor([0.5, 0.5, 0.5]))
 
     def forward(self, x, edge_index, edge_attr=None, u=None, batch=None, bond_batch=None):
-        x1, edge_attr1 = self.seq1(x, edge_index, edge_attr)
-        x2, edge_attr2 = self.seq2(x, edge_index, edge_attr)
-        x3, edge_attr3 = self.seq3(x, edge_index, edge_attr)
+        x1, edge_attr1,u = self.seq1(x, edge_index, edge_attr)
+
+        x2, edge_attr2,u = self.seq2(x, edge_index, edge_attr)
+        x3, edge_attr3,u = self.seq3(x, edge_index, edge_attr)
 
         # Weighted average of outputs
         edge_attr = (edge_attr1 * self.weights[0] + edge_attr2 * self.weights[1] + edge_attr3 * self.weights[2]) / 3
@@ -174,12 +182,14 @@ class HModel(torch.nn.Module):
                                           hopping_out[0], hopping_out[1], hopping_out[2])
 
     def forward(self, x, u, edge_index, edge_attr=None, batch=None, bond_batch=None):
-        x = self.orbital_encoding_block(x, u, edge_index, edge_attr, batch, bond_batch)
-        x2, e = self.interaction_block(x, u, edge_index, edge_attr, batch, bond_batch)
+
+        x = self.orbital_encoding_block(x, edge_index, edge_attr, u, batch, bond_batch)
+
+        x2, e,edge_index = self.interaction_block(x, edge_index, edge_attr, u, batch, bond_batch)
 
         x = x + x2
 
-        x = self.onsite_blok(x, e, edge_index, edge_attr, batch, bond_batch)
-        e = self.hopping_block(e, u, edge_index, edge_attr, batch, bond_batch)
+        x = self.onsite_blok(x, edge_index, edge_attr, u, batch, bond_batch)
+        e = self.hopping_block(x, edge_index, edge_attr, u, batch, bond_batch)
 
         return x, e, edge_index

@@ -121,7 +121,7 @@ def main(device,data_path, save_exp_path):
 
 
     # Construct the model
-    model = HModel(orbital_in=[87, 73, 3], orbital_out=[100, 100, 10],
+    model = HModel(orbital_in=[84, 73, 3], orbital_out=[100, 100, 10],
                    interaction_in=[100, 73, 3], interaction_out=[100, 100, 10],
                    onsite_in=[100, 100, 10], onsite_out=[169, 1, 1],
                    hopping_in=[100, 100, 10], hopping_out=[1, 169, 1])
