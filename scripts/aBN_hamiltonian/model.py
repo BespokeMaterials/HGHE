@@ -13,7 +13,7 @@ from torch_geometric.nn import GINEConv, TransformerConv, GATv2Conv
 from hghe.graphs import LineWrapper
 
 
-class OrbitalBlock(torch.nn.Module):
+class LocalBlock(torch.nn.Module):
     def __init__(self, n_shape_in, e_shape_in, u_shape_in,
                  n_shape_out, e_shape_out, u_shape_out):
         super().__init__()
@@ -40,38 +40,36 @@ class OrbitalBlock(torch.nn.Module):
         self.conv4 = GATv2Conv(n_shape_out * 4, n_shape_out, edge_dim=e_shape_in)
 
     def forward(self, x, edge_index, edge_attr=None, u=None, batch=None, bond_batch=None):
+
+        print(edge_index)
         # Apply the first GINEConv layer
-        x = self.conv1(x, edge_index, edge_attr, batch=batch, bond_batch=bond_batch)
+        x = self.conv1(x, edge_index, edge_attr,  )
 
         # Apply the second GINEConv layer
-        x = self.conv2(x, edge_index, edge_attr, batch=batch, bond_batch=bond_batch)
+        x = self.conv2(x, edge_index, edge_attr, )
 
         # Apply the TransformerConv layer
-        x = self.conv3(x, edge_index, edge_attr, batch=batch, bond_batch=bond_batch)
+        x = self.conv3(x, edge_index, edge_attr,)
 
         # Apply the GATv2Conv layer
-        x = self.conv4(x, edge_index, edge_attr, batch=batch, bond_batch=bond_batch)
+        x = self.conv4(x, edge_index, edge_attr,)
 
         return x
 
 
 class InteractionBlock(torch.nn.Module):
     def __init__(self, n_shape_in, e_shape_in, u_shape_in,
-                 n_shape_out, e_shape_out, u_shape_out,
-                 ):
+                 n_shape_out, e_shape_out, u_shape_out):
         super().__init__()
         self.input_dimensions = [n_shape_in, e_shape_in, u_shape_in]
         self.output_dimensions = [n_shape_out, e_shape_out, u_shape_out]
 
-
-
         class Seq(torch.nn.Module):
-            def __init__(self):
+            def __init__(self, n_shape_in, e_shape_in, n_shape_out):
                 super().__init__()
-                self.n_shape_in=e_shape_in
-                self.n_shape_out=e_shape_out
-                self.e_shape_in=n_shape_in
-
+                self.n_shape_in = n_shape_in
+                self.n_shape_out = n_shape_out
+                self.e_shape_in = e_shape_in
 
                 # MLP layers for GINEConv
                 self.mlp1 = torch.nn.Sequential(
@@ -80,14 +78,13 @@ class InteractionBlock(torch.nn.Module):
                     torch.nn.Linear(int((self.n_shape_in + self.n_shape_out) / 2), self.n_shape_out)
                 )
 
+                # Convolutional layers
+                self.conv1 = GINEConv(self.mlp1, train_eps=True, edge_dim=self.e_shape_in)
+                self.conv2 = TransformerConv(self.n_shape_out, self.n_shape_out, heads=4, edge_dim=self.e_shape_in)
+                self.conv3 = TransformerConv(self.n_shape_out, self.n_shape_out, heads=4, edge_dim=self.e_shape_in)
+                self.conv4 = GATv2Conv(self.n_shape_out * 4, self.n_shape_out, edge_dim=self.e_shape_in)
 
-            # Convolutional layers
-            self.conv1 = GINEConv(self.mlp1, train_eps=True, edge_dim=self.e_shape_in)
-            self.conv2 = TransformerConv(self.n_shape_out, self.n_shape_out, heads=4, edge_dim=self.e_shape_in)
-            self.conv3 = TransformerConv(self.n_shape_out, self.n_shape_out, heads=4, edge_dim=self.e_shape_in)
-            self.conv4 = GATv2Conv(self.n_shape_out * 4, self.n_shape_out, edge_dim=self.e_shape_in)
-
-            def forward(self, x, edge_index, edge_attr=None, u=None, batch=None, bond_batch=None):
+            def forward(self, x, edge_index, edge_attr=None):
                 # Apply the first GINEConv layer
                 x = self.conv1(x, edge_index, edge_attr)
 
@@ -100,26 +97,26 @@ class InteractionBlock(torch.nn.Module):
                 # Apply the GATv2Conv layer
                 x = self.conv4(x, edge_index, edge_attr)
 
-                return x, edge_attr, u
+                return x, edge_attr
 
-        self.LineSeq1 = LineWrapper(line_module=LineWrapper(Seq()))
-        self.LineSeq2 = LineWrapper(line_module=LineWrapper(line_module=Seq()))
-        self.LineSeq3 = LineWrapper(line_module=LineWrapper(line_module=LineWrapper(line_module=Seq())))
+        # Instantiate the Seq class
+        self.seq1 = Seq(n_shape_in, e_shape_in, n_shape_out)
+        self.seq2 = Seq(n_shape_in, e_shape_in, n_shape_out)
+        self.seq3 = Seq(n_shape_in, e_shape_in, n_shape_out)
 
-        self.weights = torch.nn.Parameter(torch.tensor([0.5, 0.5, 0.5])),
-
-        pass
+        # Define weights as trainable parameters
+        self.weights = torch.nn.Parameter(torch.tensor([0.5, 0.5, 0.5]))
 
     def forward(self, x, edge_index, edge_attr=None, u=None, batch=None, bond_batch=None):
-        x1, edge_attr1, u1, edge_index = self.LineSeq1(x, edge_index, edge_attr, u, batch)
-        x2, edge_attr2, u2, edge_index = self.LineSeq1(x, edge_index, edge_attr, u, batch)
-        x3, edge_attr3, u3, edge_index = self.LineSeq1(x, edge_index, edge_attr, u, batch)
+        x1, edge_attr1 = self.seq1(x, edge_index, edge_attr)
+        x2, edge_attr2 = self.seq2(x, edge_index, edge_attr)
+        x3, edge_attr3 = self.seq3(x, edge_index, edge_attr)
 
+        # Weighted average of outputs
         edge_attr = (edge_attr1 * self.weights[0] + edge_attr2 * self.weights[1] + edge_attr3 * self.weights[2]) / 3
         x = (x1 * self.weights[0] + x2 * self.weights[1] + x3 * self.weights[2]) / 3
 
         return x, edge_attr, edge_index
-
 
 class OnsiteBlock(torch.nn.Module):
     def __init__(self, n_shape_in, e_shape_in, u_shape_in,
@@ -158,22 +155,31 @@ class HModel(torch.nn.Module):
     d) Interaction prediction block
     """
 
-    def __init__(self, n_shape, e_shape, u_shape):
-        super().__init__()
-        self.input_dimensions = [n_shape, e_shape, u_shape]
-        self.orbital_encoding_block = OrbitalBlock(n_shape_in, e_shape_in, u_shape_in,
-                                                   n_shape_out, e_shape_out, u_shape_out)
-        self.edge_block = InteractionBlock()
-        self.onsite_blok = OnsiteBlock()
-        self.interaction_block = HoppingBlock()
+    def __init__(self, orbital_in, orbital_out,
 
-    def forward(self, x, e, u, edge_index, edge_attr=None, batch=None, bond_batch=None):
-        x = self.orbital_encoding_block(x, e, u, edge_index, edge_attr, batch, bond_batch)
-        x2, e = self.edge_block(x, e, u, edge_index, edge_attr, batch, bond_batch)
+                 interaction_in, interaction_out,
+                 onsite_in, onsite_out,
+                 hopping_in, hopping_out,
+
+                 ):
+        super().__init__()
+
+        self.orbital_encoding_block = LocalBlock(orbital_in[0], orbital_in[1], orbital_in[2],
+                                                 orbital_out[0], orbital_out[1], orbital_out[2])
+        self.interaction_block = InteractionBlock(interaction_in[0], interaction_in[1], interaction_in[2],
+                                                  interaction_out[0], interaction_out[1], interaction_out[2])
+        self.onsite_blok = OnsiteBlock(onsite_in[0], onsite_in[1], onsite_in[2],
+                                       onsite_out[0], onsite_out[1], onsite_out[2])
+        self.hopping_block = HoppingBlock(hopping_in[0], hopping_in[1], hopping_in[2],
+                                          hopping_out[0], hopping_out[1], hopping_out[2])
+
+    def forward(self, x, u, edge_index, edge_attr=None, batch=None, bond_batch=None):
+        x = self.orbital_encoding_block(x, u, edge_index, edge_attr, batch, bond_batch)
+        x2, e = self.interaction_block(x, u, edge_index, edge_attr, batch, bond_batch)
 
         x = x + x2
 
         x = self.onsite_blok(x, e, edge_index, edge_attr, batch, bond_batch)
-        e = self.interaction_block(e, u, edge_index, edge_attr, batch, bond_batch)
+        e = self.hopping_block(e, u, edge_index, edge_attr, batch, bond_batch)
 
-        return x, e
+        return x, e, edge_index

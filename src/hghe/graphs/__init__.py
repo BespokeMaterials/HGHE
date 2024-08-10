@@ -1,2 +1,2 @@
 
-from line_module import  LineWrapper
+from .line_module import  LineWrapper
