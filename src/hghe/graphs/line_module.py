@@ -33,20 +33,16 @@ def average_reciprocal_edges(edge_index, edge_attr):
     # Convert the list of unique edges back to a tensor
     new_edge_index = torch.tensor(unique_edges, dtype=torch.long).t().contiguous()
     new_edge_attr = torch.stack(unique_edge_attr)
-
-    print("--new_edge_index:", new_edge_index)
     return new_edge_index, new_edge_attr
 
 
 def line_graph(x, edge_index, edge_attr):
     # Convert to undirected graph to ensure bidirectional edges
 
-    print("edge_index:", edge_index)
-    print("nodes",len(x))
-    print(max(edge_index[0]),max(edge_index[1]))
+
     # average (01 + 10)/2=01
     edge_index, edge_attr = average_reciprocal_edges(edge_index, edge_attr)
-    print(max(edge_index[0]), max(edge_index[1]))
+
     new_x = edge_attr
     node_neighbours = {}
     old_node_new_edge = {}
@@ -63,7 +59,7 @@ def line_graph(x, edge_index, edge_attr):
     new_edge_index = [[], []]
     new_edge_atr = []
     edge_nr = 0
-    print("edge_index.shape", edge_index.shape)
+
     for old_edge_i in range(edge_index.shape[0]):
         na = edge_index[0][old_edge_i].item()
         nb = edge_index[1][old_edge_i].item()
@@ -81,7 +77,6 @@ def line_graph(x, edge_index, edge_attr):
     edge_attr = torch.stack(new_edge_atr)
     x = new_x
 
-    print("new_edge_index:", new_edge_index)
     edge_index = torch.tensor(new_edge_index)
 
     return x, edge_index, edge_attr, (node_neighbours, old_node_new_edge)
@@ -89,7 +84,7 @@ def line_graph(x, edge_index, edge_attr):
 
 def reverse_line_graph(x, edge_attr, old_info):
     old_node_neighbours, old_node_new_edge = old_info
-    print("reverse node_neighbours:", old_node_neighbours)
+
 
     new_edge_index = [[], []]
     new_edge_attr = []
@@ -106,12 +101,13 @@ def reverse_line_graph(x, edge_attr, old_info):
         nx = dummy
         for edge in old_node_new_edge[node]:
             nx += edge_attr[edge]
-        nx = nx / len(old_node_new_edge[node])
+        nx = nx  #/ len(old_node_new_edge[node])
         new_x.append(nx)
 
     edge_index = torch.tensor(new_edge_index)
     edge_attr = torch.stack(new_edge_attr)
     x = torch.stack(new_x)
+
 
     return x, edge_index, edge_attr
 

@@ -5,6 +5,19 @@ from model import HModel
 from utils import create_directory_if_not_exists
 from torch_geometric.data import InMemoryDataset, Data
 from torch.utils.data import random_split
+
+def contains_nan(tensor):
+    """
+    Check if there are any NaN values in a PyTorch tensor.
+
+    Parameters:
+    tensor (torch.Tensor): The input tensor to check.
+
+    Returns:
+    bool: True if there is at least one NaN value, False otherwise.
+    """
+    return torch.isnan(tensor).any().item()
+
 class CustomGraphDataset(InMemoryDataset):
     def __init__(self, data_list):
         super(CustomGraphDataset, self).__init__()
@@ -35,36 +48,61 @@ class Trainer:
         self.device = device
 
     def train(self, num_epochs):
+
         for epoch in range(num_epochs):
+
             self.model.train()  # Set the model to training mode
             running_loss = 0.0
 
             # Training loop
             for inputs in self.train_loader:
-                self.optimizer.zero_grad()
 
-                inputs = inputs.to(self.device)
-                # getting the onsite and hoppings
-                targets = (inputs.hmat_on, inputs.hmat_hop, inputs.smat_on, inputs.smat_hop)
-                print("Target shapes:",targets[0].shape, targets[1].shape, targets[2].shape,targets[3].shape)
-                # Prediction:
+                    self.optimizer.zero_grad()
+                    for name, param in self.model.named_parameters():
+                        if param.grad is not None:
+                            if torch.isnan(param.grad).any():
+                                print(f"NaNs found in gradients of {name}")
+                            if torch.isinf(param.grad).any():
+                                print(f"Infs found in gradients of {name}")
+                            if torch.max(param.grad).item() > 1e5:
+                                print(f"Large gradient values in {name}")
 
-                pred = self.model(x=inputs.x.to(torch.float32),
-                                  u=inputs.u.to(torch.float32),
-                                  edge_index=inputs.edge_index.to(torch.int64),
-                                  edge_attr=inputs.edge_attr.to(torch.float32),
-                                  batch=inputs.batch,
-                                  bond_batch=None)
-                # compute loss
-                loss = self.loss_fn(pred, targets)
-                loss.backward()
-                #optimize
-                self.optimizer.step()
-                running_loss += loss.item()
+                    inputs = inputs.to(self.device)
+                    # getting the onsite and hoppings
+                    targets = (inputs.hmat_on, inputs.hmat_hop, inputs.smat_on, inputs.smat_hop)
+                    # print("Target shapes:", targets[0].shape, targets[1].shape, targets[2].shape, targets[3].shape)
+                    # # Prediction:
+                    # print("x contaians NAN:", contains_nan(inputs.x.to(torch.float32)))
+                    # print("u contains nan:", contains_nan(inputs.u.to(torch.float32)))
+                    # print("edge_attr contians nan:", contains_nan(inputs.edge_attr.to(torch.float32)))
+                    pred = self.model(x=inputs.x.to(torch.float32),
+                                      u=inputs.u.to(torch.float32),
+                                      edge_index=inputs.edge_index.to(torch.int64),
+                                      edge_attr=inputs.edge_attr.to(torch.float32),
+                                      batch=inputs.batch,
+                                      bond_batch=None)
+                    # compute loss
+                    loss = self.loss_fn(pred, targets, inputs.edge_index.to(torch.int64))
+                    loss.backward()
+                    #optimize
+                    self.optimizer.step()
+
+                    running_loss += loss.item()
+                    # for name, param in self.model.named_parameters():
+                    #     if param.grad is not None:
+                    #         if torch.isnan(param.grad).any():
+                    #             print(f"2:NaNs found in gradients of {name}")
+                    #         if torch.isinf(param.grad).any():
+                    #             print(f"2:Infs found in gradients of {name}")
+                    #         if torch.max(param.grad).item() > 1e5:
+                    #             print(f"2:Large gradient values in {name}")
+
+                    print("rl:", running_loss)
+
 
             # Validation loop
             self.evaluate(epoch, num_epochs, running_loss)
-            return self.model
+        return self.model
 
     def evaluate(self, epoch=0, num_epochs=None, running_loss=None):
         self.model.eval()  # Set the model to evaluation mode
@@ -73,16 +111,18 @@ class Trainer:
             if self.val_loader is not None and epoch % 5 == 0:
                 for inputs in self.val_loader:
                     inputs = inputs.to(self.device)
-                    targets = (inputs.onsite, inputs.hop)
+                    targets = (inputs.hmat_on, inputs.hmat_hop, inputs.smat_on, inputs.smat_hop)
 
                     pred = self.model(x=inputs.x.to(torch.float32),
                                       u=inputs.u.to(torch.float32),
                                       edge_index=inputs.edge_index.to(torch.int64),
                                       edge_attr=inputs.edge_attr.to(torch.float32),
                                       batch=inputs.batch,
-                                      bond_batch=inputs.bond_batch)
+                                      bond_batch=None
+                                      )
 
-                    loss = self.loss_fn(pred, targets)
+                    loss = self.loss_fn(pred, targets, inputs.edge_index.to(torch.int64))
+
                     val_loss += loss.item()
 
                 # Print statistics
@@ -96,15 +136,26 @@ class Trainer:
                       f"Train Loss: {running_loss / len(self.train_loader):.4f}, ")
 
 
+def ham_difference(pred, target, edge_index):
+    onsite_p = pred[0]
+    hop_p = pred[1]
 
-def ham_difference():
-    pass
+    onsite_t = target[0].view(onsite_p.shape[0], -1)
+    hop_t = target[1].view(hop_p.shape[0], -1)
 
-def main(device,data_path, save_exp_path):
+    onsite_dif = torch.norm(onsite_t - onsite_p)
+    hop_dif = torch.norm(hop_t - hop_p)
+    print(f"onsite shape: {onsite_dif},hop_dif.shape:{hop_dif} ")
 
+    dif = onsite_dif + hop_dif
+    print(f"onsite dif: {onsite_dif} | hop dif:{hop_dif} |total dif in module :{dif}")
+    return dif
+
+
+def main(device, data_path, save_exp_path):
     # Construct the directories for saving the experiment:
     create_directory_if_not_exists(save_exp_path)
-    create_directory_if_not_exists(save_exp_path+"/evaluation")
+    create_directory_if_not_exists(save_exp_path + "/evaluation")
     create_directory_if_not_exists(save_exp_path + "/model")
 
     # Load the data
@@ -118,18 +169,16 @@ def main(device,data_path, save_exp_path):
     train_size = total_size - val_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
-
-
     # Construct the model
     model = HModel(orbital_in=[84, 73, 3], orbital_out=[100, 100, 10],
                    interaction_in=[100, 73, 3], interaction_out=[100, 100, 10],
                    onsite_in=[100, 100, 10], onsite_out=[169, 1, 1],
-                   hopping_in=[100, 100, 10], hopping_out=[1, 169, 1])
+                   hopping_in=[100, 100, 10], hopping_out=[1, 169, 3])
 
     # Define the optimizer
-    train_loader = DataLoader(train_dataset, batch_size=2, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=3, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
-    optimizer = Adam(model.parameters(), lr=0.001)
+    optimizer = Adam(model.parameters(), lr=1e-4)
 
     trainer = Trainer(model,
                       train_loader=train_loader,
@@ -138,15 +187,14 @@ def main(device,data_path, save_exp_path):
                       optimizer=optimizer,
                       device=device)
 
-    model = trainer.train(num_epochs=100)
-    torch.save(model.state_dict(), save_exp_path + "/model/"+'model.pth')
-
+    model = trainer.train(num_epochs=25)
+    torch.save(model.state_dict(), save_exp_path + "/model/" + 'model.pth')
 
     print("Done !")
 
 
 main(device="cpu",
-    data_path='/Users/voicutomut/Documents/GitHub/HGHE/scripts/aBN_hamiltonian/DATA/DFT/aBN_DFT_CSV/DFT_graphs_64atoms_atomic.pt',
-    save_exp_path="test_exp"
+     data_path='/Users/voicutomut/Documents/GitHub/HGHE/scripts/aBN_hamiltonian/DATA/DFT/aBN_DFT_CSV/DFT_graphs_64atoms_atomic.pt',
+     save_exp_path="test_exp"
 
      )
