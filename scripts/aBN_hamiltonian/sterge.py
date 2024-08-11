@@ -63,9 +63,8 @@ def view_eval(pred, targets, edge_index, exp_path, img_id):
     for k in range(len(edge_index[0])):
         i = edge_index[0][k]
         j = edge_index[1][k]
-
-        #print(pred[1][k].reshape(nr_orb, nr_orb))
-        h_mat[i * nr_orb:(i + 1) * nr_orb, j * nr_orb:(j + 1) * nr_orb] = pred[1][k].reshape(nr_orb, nr_orb)
+        if i>2 and j >2:
+            h_mat[i * nr_orb:(i + 1) * nr_orb, j * nr_orb:(j + 1) * nr_orb] = pred[1][k].reshape(nr_orb, nr_orb)
 
     h_tar = torch.zeros(mat_shape, mat_shape)
     # set onsites:
@@ -109,8 +108,7 @@ class Trainer:
 
             self.model.train()  # Set the model to training mode
             running_loss = 0.0
-            if epoch ==0:
-                self.evaluate(epoch, num_epochs, running_loss)
+
             # Training loop
             for inputs in self.train_loader:
 
@@ -146,7 +144,6 @@ class Trainer:
                 self.optimizer.step()
 
                 running_loss += loss.item()
-
                 # for name, param in self.model.named_parameters():
                 #     if param.grad is not None:
                 #         if torch.isnan(param.grad).any():
@@ -157,9 +154,7 @@ class Trainer:
                 #             print(f"2:Large gradient values in {name}")
 
             # Validation loop
-            if epoch !=0:
-                print(f"Epoch {epoch} loss: {running_loss/len(self.train_loader)}")
-                self.evaluate(epoch, num_epochs, running_loss)
+            self.evaluate(epoch, num_epochs, running_loss)
         return self.model
 
     def evaluate(self, epoch=0, num_epochs=None, running_loss=None):
@@ -167,7 +162,7 @@ class Trainer:
         val_loss = 0.0
         with torch.no_grad():
             img_id = 0
-            if self.val_loader is not None and epoch % 5 == 0 or epoch == 1:
+            if self.val_loader is not None and epoch % 5 == 0:
                 for inputs in self.val_loader:
                     inputs = inputs.to(self.device)
                     targets = (inputs.hmat_on, inputs.hmat_hop, inputs.smat_on, inputs.smat_hop)
@@ -266,6 +261,6 @@ def main(device, data_path, save_exp_path):
 
 main(device="cpu",
      data_path='/Users/voicutomut/Documents/GitHub/HGHE/scripts/aBN_hamiltonian/DATA/DFT/aBN_DFT_CSV/DFT_graphs_64atoms_atomic.pt',
-     save_exp_path="test_exp"
+     save_exp_path="test_exp_sterge"
 
      )

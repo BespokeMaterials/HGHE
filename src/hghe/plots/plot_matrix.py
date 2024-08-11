@@ -7,7 +7,7 @@ import glob
 import math
 import torch
 
-def matrix_plot(matrix, filename, grid1_step=1, grid2_step=13):
+def matrix_plot(matrix, filename, grid1_step=1, grid2_step=13, figsize=(13, 13), dpi=700):
     """
     Generate and save a heatmap from a given matrix.
 
@@ -15,17 +15,19 @@ def matrix_plot(matrix, filename, grid1_step=1, grid2_step=13):
     :param filename: The file name to save the heatmap
     :param grid1_step: Step for the first grid (default is 1)
     :param grid2_step: Step for the second grid (default is 13)
+    :param figsize: Size of the figure (width, height) in inches (default is (10, 10))
+    :param dpi: Dots per inch (resolution) of the saved image (default is 300)
     """
     # Determine the min and max values of the matrix
     min_val = np.min(matrix)
-    if min_val >=0:
-        min_val=-0.1
+    if min_val >= 0:
+        min_val = -0.1
     max_val = np.max(matrix)
-    if max_val <=0:
-        max_val=+0.1
+    if max_val <= 0:
+        max_val = +0.1
 
-    # Create the heatmap
-    plt.figure()
+    # Create the heatmap with specified size and resolution
+    plt.figure(figsize=figsize, dpi=dpi)
     norm = TwoSlopeNorm(vmin=min_val, vcenter=0, vmax=max_val)
     plt.imshow(matrix, cmap='seismic', norm=norm, interpolation='nearest')
     plt.colorbar()
@@ -42,6 +44,6 @@ def matrix_plot(matrix, filename, grid1_step=1, grid2_step=13):
         ax.grid(which='major', color='gray', linestyle='-', linewidth=0.25)
 
     plt.grid(True)
-    plt.savefig(filename)
+    plt.savefig(filename, bbox_inches='tight')
     plt.close()
     print("Saved heatmap to {}".format(filename))

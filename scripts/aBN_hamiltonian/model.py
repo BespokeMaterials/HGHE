@@ -101,19 +101,18 @@ class InteractionBlock(torch.nn.Module):
         self.seq1 = LineWrapper(Seq(n_shape_in=e_shape_in,
                                     e_shape_in=n_shape_in,
                                     n_shape_out=n_shape_out))
-        self.seq2 = LineWrapper(LineWrapper(LineWrapper(Seq(n_shape_in=e_shape_in,
-                                                            e_shape_in=n_shape_in,
-                                                            n_shape_out=n_shape_out))))
-        self.seq3 = LineWrapper(LineWrapper(LineWrapper(LineWrapper(LineWrapper(Seq(n_shape_in=e_shape_in,
-                                                                                    e_shape_in=n_shape_in,
-                                                                                    n_shape_out=n_shape_out))))))
+        self.seq2 = LineWrapper(Seq(n_shape_in=e_shape_in,
+                                    e_shape_in=n_shape_in,
+                                    n_shape_out=n_shape_out))
+        self.seq3 = LineWrapper(Seq(n_shape_in=e_shape_in,
+                                    e_shape_in=n_shape_in,
+                                    n_shape_out=n_shape_out))
 
         # Define weights as trainable parameters
         self.weights = torch.nn.Parameter(torch.tensor([0.5, 0.5, 0.5]))
 
     def forward(self, x, edge_index, edge_attr=None, u=None, batch=None, bond_batch=None):
         x1, edge_attr1, u = self.seq1(x, edge_index, edge_attr)
-
         x2, edge_attr2, u = self.seq2(x, edge_index, edge_attr)
         x3, edge_attr3, u = self.seq3(x, edge_index, edge_attr)
 
@@ -183,7 +182,7 @@ class HoppingBlock(torch.nn.Module):
                 # MLP layers for GINEConv
                 self.mlp1 = torch.nn.Sequential(
                     torch.nn.Linear(self.n_shape_in, int((self.n_shape_in + self.n_shape_out) / 2)),
-                    torch.nn.LeakyReLU(),
+                    torch.nn.ReLU(),
                     torch.nn.Linear(int((self.n_shape_in + self.n_shape_out) / 2), self.n_shape_out)
                 )
 
@@ -191,7 +190,7 @@ class HoppingBlock(torch.nn.Module):
                 self.conv1 = GINEConv(self.mlp1, train_eps=True, edge_dim=self.e_shape_in)
                 self.conv2 = TransformerConv(self.n_shape_out, self.n_shape_out, heads=4, edge_dim=self.e_shape_in)
                 self.conv3 = TransformerConv(self.n_shape_out * 4, self.n_shape_out, heads=4, edge_dim=self.e_shape_in)
-                self.conv4 = GATv2Conv(self.n_shape_out * 4, self.n_shape_out, edge_dim=self.e_shape_in)
+                self.conv4 = TransformerConv(self.n_shape_out * 4, self.n_shape_out, edge_dim=self.e_shape_in)
 
             def forward(self, x, edge_index, edge_attr=None, u=None, batch=None, bond_batch=None):
                 # Apply the first GINEConv layer

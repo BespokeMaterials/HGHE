@@ -43,6 +43,8 @@ def line_graph(x, edge_index, edge_attr):
     # average (01 + 10)/2=01
     edge_index, edge_attr = average_reciprocal_edges(edge_index, edge_attr)
 
+
+
     new_x = edge_attr
     node_neighbours = {}
     old_node_new_edge = {}
@@ -50,17 +52,20 @@ def line_graph(x, edge_index, edge_attr):
         node_neighbours[i] = {}
         old_node_new_edge[i] = []
 
+
     for i in range(edge_index.shape[1]):
         na = edge_index[0][i].item()
         nb = edge_index[1][i].item()
         node_neighbours[na][nb] = i
         node_neighbours[nb][na] = i
 
+
+
     new_edge_index = [[], []]
     new_edge_atr = []
     edge_nr = 0
 
-    for old_edge_i in range(edge_index.shape[0]):
+    for old_edge_i in range(edge_index.shape[1]):
         na = edge_index[0][old_edge_i].item()
         nb = edge_index[1][old_edge_i].item()
 
@@ -77,7 +82,7 @@ def line_graph(x, edge_index, edge_attr):
     edge_attr = torch.stack(new_edge_atr)
     x = new_x
 
-    edge_index = torch.tensor(new_edge_index)
+    edge_index = torch.tensor(new_edge_index).to(x.device)
 
     return x, edge_index, edge_attr, (node_neighbours, old_node_new_edge)
 
@@ -101,7 +106,8 @@ def reverse_line_graph(x, edge_attr, old_info):
         nx = dummy
         for edge in old_node_new_edge[node]:
             nx += edge_attr[edge]
-        nx = nx  #/ len(old_node_new_edge[node])
+        if len(old_node_new_edge[node])!=0:
+            nx = nx / len(old_node_new_edge[node])
         new_x.append(nx)
 
     edge_index = torch.tensor(new_edge_index)
@@ -153,7 +159,12 @@ class LineWrapper(torch.nn.Module):
         # bond_batch: Batch information specific to bonds (optional)
 
         # convert to line_graph
+
+
         new_x, new_edge_index, edge_attr, old_description = line_graph(x, edge_index, edge_attr)
+
+
+
 
         # literally forward step
         new_x, edge_attr, u = self.line_module(new_x, new_edge_index, edge_attr, state)
