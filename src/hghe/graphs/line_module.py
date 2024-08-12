@@ -107,7 +107,7 @@ def reverse_line_graph(x, edge_attr, old_info):
         for edge in old_node_new_edge[node]:
             nx += edge_attr[edge]
         if len(old_node_new_edge[node])!=0:
-            nx = nx / len(old_node_new_edge[node])
+            nx = nx / len(old_node_new_edge[node])*10
         new_x.append(nx)
 
     edge_index = torch.tensor(new_edge_index)

@@ -109,8 +109,9 @@ class Trainer:
 
             self.model.train()  # Set the model to training mode
             running_loss = 0.0
-            if epoch ==0:
-                self.evaluate(epoch, num_epochs, running_loss)
+            # if epoch ==0:
+            #
+            #     self.evaluate(epoch, num_epochs, running_loss)
             # Training loop
             for inputs in self.train_loader:
 
@@ -245,7 +246,7 @@ def main(device, data_path, save_exp_path):
                    hopping_in=[100, 100, 10], hopping_out=[1, 169, 3])
 
     # Define the optimizer
-    train_loader = DataLoader(train_dataset, batch_size=3, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=2, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
     optimizer = Adam(model.parameters(), lr=5e-4)
 
