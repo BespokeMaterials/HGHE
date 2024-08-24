@@ -106,13 +106,10 @@ class Trainer:
     def train(self, num_epochs):
         self.model=self.model.to(self.device)
         for epoch in range(num_epochs):
-
+            # self.evaluate(epoch, num_epochs, 0)
             self.model.train()  # Set the model to training mode
             running_loss = 0.0
-            # if epoch ==0:
-            #
-            #     self.evaluate(epoch, num_epochs, running_loss)
-            # Training loop
+
             for inputs in self.train_loader:
 
                 self.optimizer.zero_grad()
@@ -205,19 +202,57 @@ class Trainer:
 
 
 def ham_difference(pred, target, edge_index):
+
+
+
+
+    #return force_pred(pred, target, edge_index)
     onsite_p = pred[0]
     hop_p = pred[1]
+
+
+    #------------simetry -----------------
+    # Extract indices
+    src_nodes = edge_index[0]
+    dst_nodes = edge_index[1]
+
+    # Perform batched addition
+    # Create a zero tensor for accumulation
+    accum = torch.zeros_like(hop_p)
+
+    # Sum up the values
+    accum[src_nodes] += hop_p[dst_nodes]
+    accum[dst_nodes] += hop_p[src_nodes]
+
+    # Update hop_p with accumulated values
+    hop_p =(hop_p+ accum)/2
+    # ------------simetry -----------------
+
 
     onsite_t = target[0].view(onsite_p.shape[0], -1)
     hop_t = target[1].view(hop_p.shape[0], -1)
 
-    onsite_dif = torch.norm(onsite_t - onsite_p)**2
+    onsite_dif = torch.norm(onsite_t - onsite_p) ** 2
 
-    hop_dif = torch.norm(hop_t - hop_p)**2
+    hop_d = hop_t - hop_p
+    scale = torch.count_nonzero(hop_t, dim=1)
+    zero_count = torch.count_nonzero(hop_p)
 
-    dif = onsite_dif + hop_dif
-    print(f"onsite dif: {onsite_dif} | hop dif:{hop_dif} |total dif in module :{dif}")
+    hop_dif = torch.norm(hop_d)**2
+
+    nop_e_norm=torch.norm(hop_d, dim=1)
+    hop_d_scale = torch.norm(nop_e_norm* scale)
+
+    variance_penalty_h = (torch.var(hop_p)-torch.var(hop_t))**2*10000
+    variance_penalty_o = (torch.var(onsite_p) - torch.var(onsite_t)) ** 2
+
+    node_distances = torch.cdist(hop_p, hop_p, p=2)
+    contrastive_penalty = torch.mean(torch.relu(1 - node_distances))
+
+    dif =onsite_dif + hop_d_scale+hop_dif+10*contrastive_penalty
+    print(f"onsite dif: {onsite_dif} |\nhop dif:{hop_dif}|\nhop_d_scale: {hop_d_scale}|\nvariance_penalty:{variance_penalty_h}|\ncontrastive_penalty:{contrastive_penalty}|\ntotal dif in module :{dif}|\n\n")
     return dif
+
 
 
 def main(device, data_path, save_exp_path):
@@ -240,15 +275,16 @@ def main(device, data_path, save_exp_path):
     print("len(val_dataset)", len(val_dataset))
 
     # Construct the model
-    model = HModel(orbital_in=[84, 73, 3], orbital_out=[100, 100, 10],
-                   interaction_in=[100, 73, 3], interaction_out=[100, 100, 10],
-                   onsite_in=[100, 100, 10], onsite_out=[169, 1, 1],
-                   hopping_in=[100, 100, 10], hopping_out=[1, 169, 3])
+    model = HModel(orbital_in=[84, 73, 3], orbital_out=[168, 101, 10],
+                   interaction_in=[168, 73, 3], interaction_out=[168, 103, 10],
+                   onsite_in=[168, 103, 10], onsite_out=[169, 1, 1],
+                   hopping_in=[168, 103, 10], hopping_out=[1, 169, 3])
 
     # Define the optimizer
-    train_loader = DataLoader(train_dataset, batch_size=2, shuffle=True)
+    train_loader = (DataLoader
+                    (train_dataset, batch_size=2, shuffle=True))
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
-    optimizer = Adam(model.parameters(), lr=5e-4)
+    optimizer = Adam(model.parameters(), lr=5e-4, weight_decay=1e-5)
 
     trainer = Trainer(model,
                       train_loader=train_loader,
@@ -259,14 +295,29 @@ def main(device, data_path, save_exp_path):
                       eval_storage=save_exp_path + "/evaluation"
                       )
 
-    model = trainer.train(num_epochs=57)
+    model = trainer.train(num_epochs=53)
+    torch.save(model.state_dict(), save_exp_path + "/model/" + 'model.pth')
+
+    optimizer = Adam(model.parameters(), lr=1e-5)
+
+    create_directory_if_not_exists(save_exp_path + "/evaluation_ls2")
+    trainer = Trainer(model,
+                      train_loader=train_loader,
+                      val_loader=val_loader,
+                      loss_fn=ham_difference,
+                      optimizer=optimizer,
+                      device=device,
+                      eval_storage=save_exp_path + "/evaluation_ls2"
+                      )
+
+    model = trainer.train(num_epochs=100)
     torch.save(model.state_dict(), save_exp_path + "/model/" + 'model.pth')
 
     print("Done !")
 
 
 main(device="cpu",
-     data_path='/Users/voicutomut/Documents/GitHub/HGHE/scripts/aBN_hamiltonian/DATA/DFT/aBN_DFT_CSV/DFT_graphs_64atoms_atomic.pt',
-     save_exp_path="test_exp"
+     data_path='/Users/voicutomut/Documents/GitHub/HGHE/scripts/aBN_hamiltonian/DATA/DFT/aBN_DFT_CSV/DFT_graphs_8atoms_atomic.pt',
+     save_exp_path="test_exp_8atom_2"
 
      )

@@ -18,6 +18,7 @@ def main(file_path, nr_atoms, radius, save_path):
     filenames = []
 
     for index, row in df.iterrows():
+        print(row['nr_atoms'])
         if nr_atoms <= row['nr_atoms'] <= nr_atoms + 10:
             print(row['nr_atoms'])
             filenames.append(row['filename'])
@@ -115,6 +116,6 @@ def main(file_path, nr_atoms, radius, save_path):
 
 if __name__ == "__main__":
     example_file_path = "DATA/DFT/aBN_DFT_CSV/DFT.csv"
-    nr_atoms = 64
-    save_path = "DATA/DFT/aBN_DFT_CSV/DFT_graphs_64atoms_atomic.pt"
-    main(example_file_path, nr_atoms, radius=8, save_path=save_path)
+    nr_atoms = 8
+    save_path = f"DATA/DFT/aBN_DFT_CSV/DFT_graphs_{nr_atoms}atoms_atomic.pt"
+    main(example_file_path, nr_atoms=nr_atoms, radius=10, save_path=save_path)

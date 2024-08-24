@@ -23,9 +23,9 @@ for batch_idx, batch in enumerate(train_data_loader):
     print(batch[0])
 
     print(batch[0].pos)
-    print(batch[0].atoms)
+    print("atoms:",batch[0].atoms)
     print("diag_ham:", batch[0].diagonal_hamiltonian)
     print("non_diagonal_hamiltonian:", batch[0].non_diagonal_hamiltonian)
     print("non_diagonal_hamiltonian_mask:", batch[0].diagonal_hamiltonian_mask)
-    print("edge_index_full:", batch[0].edge_index_fullr )
+    print("edge_index_full:", batch[0].edge_index_full )
     break

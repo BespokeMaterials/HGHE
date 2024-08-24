@@ -39,11 +39,8 @@ def average_reciprocal_edges(edge_index, edge_attr):
 def line_graph(x, edge_index, edge_attr):
     # Convert to undirected graph to ensure bidirectional edges
 
-
     # average (01 + 10)/2=01
     edge_index, edge_attr = average_reciprocal_edges(edge_index, edge_attr)
-
-
 
     new_x = edge_attr
     node_neighbours = {}
@@ -52,14 +49,11 @@ def line_graph(x, edge_index, edge_attr):
         node_neighbours[i] = {}
         old_node_new_edge[i] = []
 
-
     for i in range(edge_index.shape[1]):
         na = edge_index[0][i].item()
         nb = edge_index[1][i].item()
         node_neighbours[na][nb] = i
         node_neighbours[nb][na] = i
-
-
 
     new_edge_index = [[], []]
     new_edge_atr = []
@@ -90,7 +84,6 @@ def line_graph(x, edge_index, edge_attr):
 def reverse_line_graph(x, edge_attr, old_info):
     old_node_neighbours, old_node_new_edge = old_info
 
-
     new_edge_index = [[], []]
     new_edge_attr = []
 
@@ -100,20 +93,24 @@ def reverse_line_graph(x, edge_attr, old_info):
             new_edge_index[1].append(nb)
             new_edge_attr.append(x[old_node_neighbours[na][nb]])
 
+    # compare(new_edge_attr, text_="---new edge atribute:")
+    # compare(x, text_="x-ulescu :")
+
     new_x = []
-    dummy = torch.zeros_like(edge_attr[0])
+
     for node in old_node_new_edge.keys():
-        nx = dummy
+        nx = torch.zeros_like(edge_attr[0])
         for edge in old_node_new_edge[node]:
-            nx += edge_attr[edge]
-        if len(old_node_new_edge[node])!=0:
-            nx = nx / len(old_node_new_edge[node])*10
+            nx += edge_attr[edge]  #change edge atr to
+
+        if len(old_node_new_edge[node]) != 0:
+            nx = nx / len(old_node_new_edge[node]) * 10
         new_x.append(nx)
 
     edge_index = torch.tensor(new_edge_index)
     edge_attr = torch.stack(new_edge_attr)
-    x = torch.stack(new_x)
 
+    x = torch.stack(new_x)
 
     return x, edge_index, edge_attr
 
@@ -121,14 +118,14 @@ def reverse_line_graph(x, edge_attr, old_info):
 # Tests
 def test_line_graph():
     x = torch.randn((4, 3))  # Node features
-    edge_index = torch.tensor([[0, 1, 2, 3], [1, 0, 3, 2]], dtype=torch.long)  # Edge indices
-    edge_attr = torch.randn((4, 2))  # Edge features (optional)
+    edge_index = torch.tensor([[0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3], [1, 2, 3, 0, 2, 3, 0, 1, 3, 0, 1, 2]],
+                              dtype=torch.long)  # Edge indices
+    edge_attr = torch.randn((12, 4))  # Edge features (optional)
     batch = torch.tensor([0, 0, 1, 1], dtype=torch.long)  # Batch info (optional)
     bond_batch = torch.tensor([0, 0, 1, 1], dtype=torch.long)  # Bond batch info (optional)
 
     new_x, new_edge_index, edge_attr, old_node_neighbours = line_graph(x, edge_index, edge_attr)
 
-    print("new_edge_index:", new_edge_index)
     assert new_x.size(0) == edge_index.size(1) or new_x.size(0) == int(
         edge_index.size(1) / 2), "Number of line graph nodes should equal number of original edges or half"
     assert new_edge_index.size(0) == 2, "Edge index should have two rows"
@@ -138,7 +135,6 @@ def test_line_graph():
         new_x, edge_attr, old_node_neighbours
     )
 
-    print("original_edge_index:", original_edge_index)
     assert original_edge_index.size(1) == edge_index.size(1), "Original and reconstructed edge indices should match"
     assert original_x.size(0) == x.size(0), "Original and reconstructed node features should match"
 
@@ -146,9 +142,10 @@ def test_line_graph():
 
 
 class LineWrapper(torch.nn.Module):
-    def __init__(self, line_module):
+    def __init__(self, line_module, node_update):
         super().__init__()
         self.line_module = line_module
+        self.node_update = node_update
 
     def forward(self, x, edge_index, edge_attr=None, state=None, batch=None, bond_batch=None):
         # x: Node feature matrix
@@ -160,11 +157,7 @@ class LineWrapper(torch.nn.Module):
 
         # convert to line_graph
 
-
         new_x, new_edge_index, edge_attr, old_description = line_graph(x, edge_index, edge_attr)
-
-
-
 
         # literally forward step
         new_x, edge_attr, u = self.line_module(new_x, new_edge_index, edge_attr, state)
@@ -174,7 +167,19 @@ class LineWrapper(torch.nn.Module):
             new_x, edge_attr, old_description
         )
 
+        # node update:
+        if self.node_update is not None:
+            x, _, u = self.node_update(
+                x, edge_index, edge_attr
+            )
+
         return x, edge_attr, state
+
+
+# helping finction
+def compare(vector, v=0, atol=0.1, text_="Compare"):
+    for i, xi in enumerate(vector):
+        print(f"{text_} {i}-{v}:{torch.allclose(xi, vector[v])}|{torch.norm(xi - vector[v])}", )
 
 
 if __name__ == "__main__":
