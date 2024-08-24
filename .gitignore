@@ -1,3 +1,8 @@
 
 scripts/aBN_hamiltonian/DATA
 scripts/QH9/datasets/QH9Stable
+scripts/QH9/test_exp
+scripts/QH9/test_exp_new
+scripts/aBN_hamiltonian/test_exp_8atom_2
+scripts/aBN_hamiltonian/test_exp_8atom
+scripts/aBN_hamiltonian/test_exp_debug
